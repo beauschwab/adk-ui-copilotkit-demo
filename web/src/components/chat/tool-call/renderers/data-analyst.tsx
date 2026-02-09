@@ -6,14 +6,16 @@ import { Streamdown } from "streamdown";
 import type { ToolRendererProps } from "./types";
 import { cleanResultText, extractResultText } from "../utils";
 import { extractQueryAttemptsData, QueryAttemptsDisplay } from "../query-attempts-display";
-import { extractWidgetsData, WidgetDisplay } from "../widget-display";
 
 /**
- * Data analyst renderer with query attempt tracking and chart visualisation.
+ * Data analyst renderer showing technical query details.
  * Shows:
  * - Query history (all attempts with status, expandable SQL)
- * - Chart widgets (bar, line, pie, table, metric)
  * - Synopsis text from the agent
+ *
+ * Note: Chart widgets are extracted at ToolCallDisplay level and rendered
+ * outside the collapsible for visibility. This renderer receives the cleaned
+ * result with widget tags already removed.
  */
 export function DataAnalystRenderer({ output, error }: ToolRendererProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -37,25 +39,19 @@ export function DataAnalystRenderer({ output, error }: ToolRendererProps) {
     return null;
   }
 
-  // Extract query attempts first
+  // Extract query attempts (widgets already extracted at ToolCallDisplay level)
   const { data: queryData, cleanedText: textWithoutQueries } = extractQueryAttemptsData(resultText);
 
-  // Extract widgets from the remaining text
-  const { widgets, cleanedText: textWithoutWidgets } = extractWidgetsData(textWithoutQueries);
-
   // Final cleaned text for synopsis
-  const cleanedText = cleanResultText(textWithoutWidgets);
+  const cleanedText = cleanResultText(textWithoutQueries);
 
   const isLong = cleanedText.length > 300;
   const previewText = isLong ? cleanedText.slice(0, 300) + "..." : cleanedText;
 
   return (
     <div className="mt-2 space-y-3 border-t border-border/30 pt-2">
-      {/* Query attempts */}
+      {/* Query attempts - technical details for debugging */}
       {queryData && <QueryAttemptsDisplay data={queryData} />}
-
-      {/* Widget charts */}
-      {widgets.length > 0 && <WidgetDisplay widgets={widgets} />}
 
       {/* Synopsis */}
       {cleanedText && (

@@ -11,7 +11,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { useLocalStorage } from "usehooks-ts";
-import { ArrowUpIcon, PaperclipIcon, Loader2Icon, PlusIcon } from "lucide-react";
+import { ArrowUpIcon, PaperclipIcon, Loader2Icon, PlusIcon, SquareIcon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +32,7 @@ import { GoogleDriveIcon } from "@/components/ui/icons";
 
 export type PromptInputProps = {
   onSubmit: (message: string) => void | Promise<void>;
+  onStop?: () => void;
   isLoading?: boolean;
   placeholder?: string;
   className?: string;
@@ -54,6 +55,7 @@ const getDraftKey = (sessionId: string | undefined) =>
 
 export function PromptInput({
   onSubmit,
+  onStop,
   isLoading = false,
   placeholder = "Send a message...",
   className,
@@ -313,26 +315,44 @@ export function PromptInput({
             />
           </div>
 
-          {/* Right side - submit */}
-          <button
-            type="submit"
-            disabled={!canSubmit || isBusy}
-            className={cn(
-              "group inline-flex items-center justify-center rounded-full",
-              "size-8 bg-primary text-primary-foreground",
-              "transition-all duration-200 ease-out",
-              "hover:bg-primary/90 hover:shadow-md hover:shadow-primary/25",
-              "focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
-              "active:scale-[0.95]",
-              "disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none",
-            )}
-          >
-            {isSubmitting || isUploading ? (
-              <Loader2Icon className="size-4 animate-spin" />
-            ) : (
-              <ArrowUpIcon className="size-4 transition-transform duration-200 group-hover:-translate-y-0.5" />
-            )}
-          </button>
+          {/* Right side - submit or stop */}
+          {isLoading && onStop ? (
+            <button
+              type="button"
+              onClick={onStop}
+              className={cn(
+                "group inline-flex items-center justify-center rounded-full",
+                "size-8 bg-destructive text-destructive-foreground",
+                "transition-all duration-200 ease-out",
+                "hover:bg-destructive/90 hover:shadow-md hover:shadow-destructive/25",
+                "focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
+                "active:scale-[0.95]",
+              )}
+              aria-label="Stop generation"
+            >
+              <SquareIcon className="size-3.5 fill-current" />
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={!canSubmit || isBusy}
+              className={cn(
+                "group inline-flex items-center justify-center rounded-full",
+                "size-8 bg-primary text-primary-foreground",
+                "transition-all duration-200 ease-out",
+                "hover:bg-primary/90 hover:shadow-md hover:shadow-primary/25",
+                "focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
+                "active:scale-[0.95]",
+                "disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none",
+              )}
+            >
+              {isSubmitting || isUploading ? (
+                <Loader2Icon className="size-4 animate-spin" />
+              ) : (
+                <ArrowUpIcon className="size-4 transition-transform duration-200 group-hover:-translate-y-0.5" />
+              )}
+            </button>
+          )}
         </div>
       </div>
 

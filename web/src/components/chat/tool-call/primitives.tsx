@@ -5,12 +5,12 @@ import { cn } from "@/lib/utils";
 import {
   CheckCircleIcon,
   ChevronRightIcon,
-  CircleIcon,
   ClockIcon,
   DatabaseIcon,
   SearchIcon,
 } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
+import { StreamingIndicator } from "../streaming-indicator";
 
 /**
  * CopilotKit tool status values from useDefaultTool/useRenderToolCall
@@ -37,7 +37,7 @@ export type ToolCallHeaderProps = {
 
 function getStatusIndicator(status: ToolStatus) {
   const icons: Record<ToolStatus, ReactNode> = {
-    inProgress: <CircleIcon className="size-3 animate-pulse text-muted-foreground" />,
+    inProgress: <StreamingIndicator size={16} className="py-0" />,
     executing: <ClockIcon className="size-3 animate-pulse text-primary" />,
     complete: <CheckCircleIcon className="size-3 text-green-600" />,
   };

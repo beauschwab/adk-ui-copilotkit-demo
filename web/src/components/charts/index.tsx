@@ -128,6 +128,8 @@ export function BarChart({
 }: BarChartProps) {
   const categoryColors = constructCategoryColors(categories, colors);
   const yAxisDomain = getYAxisDomain(true);
+  const isHorizontal = layout === "horizontal";
+  const needsRotation = isHorizontal && data.length > 15;
 
   return (
     <div className={cn("h-64 w-full", className)}>
@@ -135,26 +137,29 @@ export function BarChart({
         <RechartsBarChart
           data={data}
           layout={layout}
-          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          margin={{ top: 10, right: 10, left: 0, bottom: needsRotation ? 50 : 5 }}
         >
           {showGridLines && (
             <CartesianGrid
               className="stroke-border/50"
-              horizontal={layout === "horizontal"}
-              vertical={layout === "vertical"}
+              horizontal={isHorizontal}
+              vertical={!isHorizontal}
               strokeDasharray="3 3"
             />
           )}
           <XAxis
             hide={!showXAxis}
-            dataKey={layout === "horizontal" ? index : undefined}
-            type={layout === "horizontal" ? "category" : "number"}
-            domain={layout === "vertical" ? yAxisDomain : undefined}
+            dataKey={isHorizontal ? index : undefined}
+            type={isHorizontal ? "category" : "number"}
+            domain={!isHorizontal ? yAxisDomain : undefined}
             tickLine={false}
             axisLine={false}
-            tick={{ fontSize: 11 }}
+            tick={{ fontSize: needsRotation ? 10 : 11 }}
             className="fill-muted-foreground"
-            tickFormatter={layout === "vertical" ? valueFormatter : undefined}
+            tickFormatter={!isHorizontal ? valueFormatter : undefined}
+            interval={needsRotation ? "preserveStartEnd" : 0}
+            angle={needsRotation ? -45 : 0}
+            textAnchor={needsRotation ? "end" : "middle"}
           />
           <YAxis
             hide={!showYAxis}
@@ -230,11 +235,15 @@ export function LineChart({
 }: LineChartProps) {
   const categoryColors = constructCategoryColors(categories, colors);
   const yAxisDomain = getYAxisDomain(true);
+  const needsRotation = data.length > 15;
 
   return (
     <div className={cn("h-64 w-full", className)}>
       <ResponsiveContainer>
-        <RechartsLineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <RechartsLineChart
+          data={data}
+          margin={{ top: 10, right: 10, left: 0, bottom: needsRotation ? 50 : 5 }}
+        >
           {showGridLines && (
             <CartesianGrid className="stroke-border/50" strokeDasharray="3 3" vertical={false} />
           )}
@@ -243,8 +252,11 @@ export function LineChart({
             dataKey={index}
             tickLine={false}
             axisLine={false}
-            tick={{ fontSize: 11 }}
+            tick={{ fontSize: needsRotation ? 10 : 11 }}
             className="fill-muted-foreground"
+            interval={needsRotation ? "preserveStartEnd" : 0}
+            angle={needsRotation ? -45 : 0}
+            textAnchor={needsRotation ? "end" : "middle"}
           />
           <YAxis
             hide={!showYAxis}

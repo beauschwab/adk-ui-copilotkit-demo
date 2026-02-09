@@ -54,8 +54,18 @@ def _get_client() -> bigquery.Client:
     return bigquery.Client(project=project)
 
 
-def _suggest_chart_type(columns: list[dict], row_count: int) -> str:
-    """Suggest chart type based on result shape."""
+def _suggest_chart_type(
+    columns: list[dict], row_count: int, rows: list[list] | None = None
+) -> str:
+    """Suggest chart type based on result shape and data characteristics.
+
+    Chart selection priority:
+    1. Single value → metric card
+    2. Time-series (DATE/TIMESTAMP first column) → line chart
+    3. Small categorical (≤7 rows, 2 columns) → pie chart
+    4. Text-heavy data in first column (long strings) → table
+    5. Aggregated data with categories → bar chart
+    """
     if row_count == 1 and len(columns) == 1:
         return "metric"
 
@@ -64,11 +74,25 @@ def _suggest_chart_type(columns: list[dict], row_count: int) -> str:
 
     first_col_type = columns[0].get("type", "").upper()
 
+    # Time-series data → line chart (check first, before text detection)
     if first_col_type in ("DATE", "TIMESTAMP", "DATETIME"):
         return "line"
 
+    # Small categorical data → pie chart
     if row_count <= 7 and len(columns) == 2:
         return "pie"
+
+    # Check if first column contains long text (commits, descriptions, etc.)
+    # Only applies when first column is STRING - indicates detailed records
+    if first_col_type in ("STRING", "BYTES") and rows and len(rows) > 0:
+        sample_values = [
+            row[0] for row in rows[:20] if row[0] is not None
+        ]
+        if sample_values:
+            avg_len = sum(len(str(v)) for v in sample_values) / len(sample_values)
+            # Long strings (>30 chars avg) in first column → table for readability
+            if avg_len > 30:
+                return "table"
 
     return "bar"
 
@@ -149,7 +173,7 @@ async def query_data(
         rows = [_row_to_json_safe(row) for row in result]
         total_rows = len(rows)
 
-        suggested_chart = _suggest_chart_type(columns, total_rows)
+        suggested_chart = _suggest_chart_type(columns, total_rows, rows)
         bytes_processed = query_job.total_bytes_processed or 0
 
         logger.info(

@@ -151,6 +151,16 @@ export function ChatWithHistory() {
   // Stable callbacks for file upload
   const handleAddFiles = useCallback((files: FileList) => fileUpload.addFiles(files), [fileUpload]);
 
+  // Cancel the active agent execution via the backend side-channel
+  const handleStop = useCallback(async () => {
+    if (!threadId) return;
+    try {
+      await fetch(`/api/sessions/${threadId}/cancel`, { method: "POST" });
+    } catch {
+      // Swallow network errors — the stream will terminate regardless
+    }
+  }, [threadId]);
+
   return (
     <>
       {/* Register tool renderer for backend tool calls */}
@@ -159,6 +169,7 @@ export function ChatWithHistory() {
         messages={chatMessages}
         isLoading={isLoading}
         onSendMessage={sendMessage}
+        onStop={handleStop}
         sessionId={threadId}
         uploadConfig={uploadConfig}
         attachments={fileUpload.files}

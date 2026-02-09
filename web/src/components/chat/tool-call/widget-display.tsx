@@ -132,15 +132,23 @@ function WidgetChart({ widget }: { widget: WidgetData }) {
   const { columns, rows } = data;
 
   // Transform data for charts
-  // First column is typically the category/index, rest are values
+  // First column is typically the category/index
   const indexColumn = columns[0];
-  const valueColumns = columns.slice(1);
+
+  // Filter to only numeric columns (check first row for type detection)
+  const firstRow = rows[0] ?? [];
+  const valueColumns = columns.slice(1).filter((_, idx) => {
+    const value = firstRow[idx + 1];
+    return typeof value === "number" || (typeof value === "string" && !isNaN(Number(value)));
+  });
 
   // For bar/line charts: transform to array of objects
   const chartData = rows.map((row) => {
     const obj: Record<string, unknown> = { [indexColumn]: row[0] };
-    valueColumns.forEach((col, idx) => {
-      obj[col] = row[idx + 1];
+    valueColumns.forEach((col) => {
+      const colIdx = columns.indexOf(col);
+      const value = row[colIdx];
+      obj[col] = typeof value === "number" ? value : Number(value) || 0;
     });
     return obj;
   });
@@ -164,7 +172,7 @@ function WidgetChart({ widget }: { widget: WidgetData }) {
           data={chartData}
           index={indexColumn}
           categories={valueColumns}
-          className="h-48"
+          className="h-80"
           showYAxis={true}
           showXAxis={true}
         />
@@ -176,7 +184,7 @@ function WidgetChart({ widget }: { widget: WidgetData }) {
           data={chartData}
           index={indexColumn}
           categories={valueColumns}
-          className="h-48"
+          className="h-80"
           showYAxis={true}
           showXAxis={true}
         />
@@ -188,7 +196,7 @@ function WidgetChart({ widget }: { widget: WidgetData }) {
         name: String(row[0]),
         value: typeof row[1] === "number" ? row[1] : Number(row[1]) || 0,
       }));
-      return <PieChart data={pieData} className="h-48" />;
+      return <PieChart data={pieData} className="h-64" />;
     }
 
     case "table":
@@ -199,14 +207,19 @@ function WidgetChart({ widget }: { widget: WidgetData }) {
 
 type WidgetItemProps = {
   widget: WidgetData;
+  className?: string;
 };
 
-function WidgetItem({ widget }: WidgetItemProps) {
+/**
+ * Individual widget card with chart visualisation.
+ * Exported for use both in WidgetDisplay and inline in messages.
+ */
+export function WidgetItem({ widget, className }: WidgetItemProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [showQuery, setShowQuery] = useState(false);
 
   return (
-    <div className="rounded-md border border-border/50 bg-background/30">
+    <div className={cn("rounded-md border border-border/50 bg-background/30", className)}>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted/30">
           <ChartTypeIcon type={widget.chart_type} />

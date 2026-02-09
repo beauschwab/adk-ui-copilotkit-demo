@@ -18,6 +18,7 @@ export type ChatWindowProps = {
   messages: ChatMessage[];
   isLoading?: boolean;
   onSendMessage: (message: { id: string; role: "user"; content: string }) => void;
+  onStop?: () => void;
   placeholder?: string;
   // Session ID for draft persistence
   sessionId?: string;
@@ -36,6 +37,7 @@ export function ChatWindow({
   messages,
   isLoading = false,
   onSendMessage,
+  onStop,
   placeholder = "Send a message...",
   sessionId,
   uploadConfig,
@@ -81,7 +83,7 @@ export function ChatWindow({
     <div className="relative flex h-full flex-col">
       {/* Scrollable message area with padding at bottom for floating input */}
       <Conversation className="min-h-0 flex-1" isStreaming={isLoading}>
-        <ConversationContent className="pb-38">
+        <ConversationContent className="pb-48">
           {isEmpty ? (
             <ConversationEmptyState className="items-start justify-start pt-16">
               <h1 className="font-serif text-4xl text-foreground">
@@ -108,6 +110,7 @@ export function ChatWindow({
         <div className="pointer-events-auto mx-auto w-full max-w-3xl">
           <PromptInput
             onSubmit={handleSubmit}
+            onStop={onStop}
             isLoading={isLoading}
             placeholder={placeholder}
             sessionId={sessionId}

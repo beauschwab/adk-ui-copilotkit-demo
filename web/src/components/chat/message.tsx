@@ -8,6 +8,8 @@ import { ChevronRightIcon } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ToolCallDisplay } from "./tool-call";
 import { StreamingIndicator } from "./streaming-indicator";
+import { extractWidgetsData, WidgetItem, type WidgetData } from "./tool-call/widget-display";
+import { extractResultText } from "./tool-call/utils";
 
 // Semantic tag constants - must match backend (sagent/utils/semantic_tags.py)
 const THOUGHT_TAG_OPEN = "<llm:adk:soch>";
@@ -32,7 +34,8 @@ type ContentSegment =
   | { type: "thought"; content: string; isComplete: boolean }
   | { type: "response"; content: string; isComplete: boolean }
   | { type: "tool-call"; data: ToolCallData; isComplete: boolean }
-  | { type: "tool-result"; data: ToolResultData; isComplete: boolean };
+  | { type: "tool-result"; data: ToolResultData; isComplete: boolean }
+  | { type: "widget"; data: WidgetData };
 
 /**
  * Find the next semantic tag in the content string.
@@ -184,7 +187,10 @@ function parseContentSegments(content: string): ContentSegment[] {
   }
 
   // Pair tool calls with their results for combined display
-  return mergeToolCallsWithResults(merged);
+  const withResults = mergeToolCallsWithResults(merged);
+
+  // Extract widgets from data_analyst_agent results and promote to message level
+  return extractWidgetsFromToolResults(withResults);
 }
 
 /**
@@ -226,6 +232,58 @@ function mergeToolCallsWithResults(segments: ContentSegment[]): ContentSegment[]
       }
     } else {
       result.push(segment);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Extract widgets from data_analyst_agent tool results and promote to message-level.
+ * This makes charts render inline rather than buried inside tool call UI.
+ */
+function extractWidgetsFromToolResults(segments: ContentSegment[]): ContentSegment[] {
+  const result: ContentSegment[] = [];
+
+  for (const segment of segments) {
+    if (segment.type !== "tool-call") {
+      result.push(segment);
+      continue;
+    }
+
+    const toolData = segment.data as ToolCallData & { result?: unknown };
+
+    // Only extract widgets from data_analyst_agent
+    if (toolData.name !== "data_analyst_agent" || !toolData.result) {
+      result.push(segment);
+      continue;
+    }
+
+    const resultText = extractResultText(toolData.result);
+    if (!resultText) {
+      result.push(segment);
+      continue;
+    }
+
+    // Extract widgets from result text
+    const { widgets, cleanedText } = extractWidgetsData(resultText);
+
+    // Update the tool result with cleaned text (widgets removed)
+    const cleanedResult =
+      typeof toolData.result === "object"
+        ? { ...(toolData.result as Record<string, unknown>), result: cleanedText }
+        : cleanedText;
+
+    // Add the tool call segment (with cleaned result)
+    result.push({
+      type: "tool-call",
+      data: { ...toolData, result: cleanedResult } as ToolCallData & { result?: unknown },
+      isComplete: segment.isComplete,
+    });
+
+    // Add widget segments immediately after the tool call
+    for (const widget of widgets) {
+      result.push({ type: "widget", data: widget });
     }
   }
 
@@ -384,6 +442,11 @@ export const MessageResponse = memo(
                 {segment.content}
               </Streamdown>
             );
+          }
+
+          // Widget segment - charts rendered inline
+          if (segment.type === "widget") {
+            return <WidgetItem key={`widget-${segment.data.id}`} widget={segment.data} className="my-3" />;
           }
 
           return null;

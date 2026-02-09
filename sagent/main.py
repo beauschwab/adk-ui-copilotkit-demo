@@ -535,6 +535,37 @@ async def get_session(session_id: str, user_id: str):
         return {"error": str(e)}
 
 
+@app.post("/api/sessions/{session_id}/cancel")
+async def cancel_session(session_id: str):
+    """Cancel an active agent execution for a session.
+
+    Injects a None sentinel into the execution's event queue so the SSE
+    stream terminates cleanly with a RUN_FINISHED event. Then cancels
+    the background asyncio task and removes the execution entry.
+
+    Returns 200 with {"status": "cancelled"} on success, or 404 if
+    no active execution exists for this session.
+    """
+    execution = adk_agent._active_executions.get(session_id)
+    if not execution:
+        raise HTTPException(status_code=404, detail="No active execution for this session")
+
+    logging.info(f"Cancelling execution for session {session_id}")
+
+    # Inject sentinel so _stream_events breaks and _start_new_execution
+    # emits RUN_FINISHED naturally
+    await execution.event_queue.put(None)
+
+    # Cancel the background ADK task
+    await execution.cancel()
+
+    # Clean up the tracking entry
+    async with adk_agent._execution_lock:
+        adk_agent._active_executions.pop(session_id, None)
+
+    return {"status": "cancelled"}
+
+
 @app.delete("/api/sessions/{session_id}")
 async def delete_session(session_id: str, user_id: str):
     """Delete a specific session (ADK cascades deletion to events and state)."""

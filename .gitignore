@@ -104,4 +104,7 @@ web/e2e/.auth/
 *.pyc
 *.pyo
 .scratchpad*.txt
+.outreach*.txt
+
 /.playwright-mcp
+

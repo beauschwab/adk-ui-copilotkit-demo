@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   ToolCall,
   ToolCallContent,
@@ -9,6 +9,8 @@ import {
   type ToolStatus,
 } from "./primitives";
 import { getRenderer } from "./renderers";
+import { extractWidgetsData, WidgetItem } from "./widget-display";
+import { extractResultText } from "./utils";
 
 // Re-export primitives for direct use
 export {
@@ -32,6 +34,7 @@ export {
  * - web_search: starts collapsed (avoids flicker)
  * - Other tools: collapse when complete
  * - Respects user interaction
+ * - data_analyst_agent: extracts widgets and renders OUTSIDE collapsible for visibility
  */
 export type ToolCallDisplayProps = {
   name: string;
@@ -51,10 +54,33 @@ export function ToolCallDisplay({
   isStreaming = false,
 }: ToolCallDisplayProps) {
   const isWebSearch = name === "web_search";
+  const isDataAnalyst = name === "data_analyst_agent";
 
   // web_search starts collapsed to avoid flicker during streaming
   const [isOpen, setIsOpen] = useState(!isWebSearch);
   const userInteractedRef = useRef(false);
+
+  // Extract widgets from data_analyst_agent results to render outside collapsible
+  const { widgets, cleanedResult } = useMemo(() => {
+    if (!isDataAnalyst || status !== "complete" || !result) {
+      return { widgets: [], cleanedResult: result };
+    }
+
+    const resultText = extractResultText(result);
+    if (!resultText) {
+      return { widgets: [], cleanedResult: result };
+    }
+
+    const { widgets, cleanedText } = extractWidgetsData(resultText);
+
+    // Reconstruct result with cleaned text
+    const cleanedResult =
+      typeof result === "object" && result !== null
+        ? { ...(result as Record<string, unknown>), result: cleanedText }
+        : cleanedText;
+
+    return { widgets, cleanedResult };
+  }, [isDataAnalyst, status, result]);
 
   const handleOpenChange = (open: boolean) => {
     userInteractedRef.current = true;
@@ -86,12 +112,24 @@ export function ToolCallDisplay({
   const Renderer = getRenderer(name);
 
   return (
-    <ToolCall open={isOpen} onOpenChange={handleOpenChange}>
-      <ToolCallHeader name={name} status={status} isOpen={isOpen} />
-      <ToolCallContent>
-        {!shouldHideInput && <ToolCallInput input={args} />}
-        {status === "complete" && <Renderer args={args} output={result} error={error} />}
-      </ToolCallContent>
-    </ToolCall>
+    <>
+      {/* Tool call collapsible card */}
+      <ToolCall open={isOpen} onOpenChange={handleOpenChange}>
+        <ToolCallHeader name={name} status={status} isOpen={isOpen} />
+        <ToolCallContent>
+          {!shouldHideInput && <ToolCallInput input={args} />}
+          {status === "complete" && <Renderer args={args} output={cleanedResult} error={error} />}
+        </ToolCallContent>
+      </ToolCall>
+
+      {/* Widgets rendered OUTSIDE collapsible for visibility during streaming */}
+      {widgets.length > 0 && (
+        <div className="my-3 space-y-2">
+          {widgets.map((widget) => (
+            <WidgetItem key={widget.id} widget={widget} />
+          ))}
+        </div>
+      )}
+    </>
   );
 }
