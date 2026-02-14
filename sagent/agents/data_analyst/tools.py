@@ -133,6 +133,69 @@ def _track_query_attempt(
     tool_context.state["query_attempts"] = attempts
 
 
+async def create_chart(
+    title: str,
+    columns: list[str],
+    rows: list[list],
+    tool_context: ToolContext,
+    chart_type: str = "",
+) -> dict[str, Any]:
+    """Create a chart widget from pre-structured data (not from BigQuery).
+
+    Use this tool when you receive structured data from another source (e.g.
+    search results summarised by the root agent) and need to visualise it.
+    Do NOT use this for BigQuery queries — use query_data instead.
+
+    Args:
+        title: Human-readable title for the chart widget.
+        columns: List of column names (e.g. ["Country", "Population"]).
+        rows: List of rows, each row a list of values matching the columns.
+        tool_context: ADK tool context with session state access.
+        chart_type: Optional chart type hint. One of "bar", "line", "pie",
+            "table", "metric". If empty, auto-detected from the data shape.
+
+    Returns:
+        Widget metadata including the assigned widget ID and chart type.
+    """
+    valid_types = {"bar", "line", "pie", "table", "metric"}
+
+    if not columns or not rows:
+        return {"success": False, "error": "columns and rows must be non-empty"}
+
+    # Build column schema for chart type suggestion
+    col_schema = [{"name": c, "type": "STRING"} for c in columns]
+
+    if chart_type and chart_type in valid_types:
+        resolved_chart = chart_type
+    else:
+        resolved_chart = _suggest_chart_type(col_schema, len(rows), rows)
+
+    widget_id = str(uuid4())
+    widget = {
+        "id": widget_id,
+        "title": title,
+        "chart_type": resolved_chart,
+        "data": {
+            "columns": columns,
+            "rows": rows,
+        },
+        "total_rows": len(rows),
+    }
+
+    pending_widgets = tool_context.state.get("pending_widgets", [])
+    pending_widgets.append(widget)
+    tool_context.state["pending_widgets"] = pending_widgets
+
+    logger.info(f"Chart widget {widget_id} ({resolved_chart}) added to pending_widgets")
+
+    return {
+        "success": True,
+        "widget_id": widget_id,
+        "chart_type": resolved_chart,
+        "row_count": len(rows),
+    }
+
+
 async def query_data(
     query: str,
     tool_context: ToolContext,

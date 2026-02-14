@@ -43,5 +43,16 @@ locals {
         "serviceAccount:${var.service_account_emails.backend}",
       ]
     }
+    # BigQuery access for data analyst agent
+    "roles/bigquery.jobUser" = {
+      members = [
+        "serviceAccount:${var.service_account_emails.backend}",
+      ]
+    }
+    "roles/bigquery.dataViewer" = {
+      members = [
+        "serviceAccount:${var.service_account_emails.backend}",
+      ]
+    }
   }
 }

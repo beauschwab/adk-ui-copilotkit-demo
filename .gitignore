@@ -103,7 +103,7 @@ web/e2e/.auth/
 # Build artifacts
 *.pyc
 *.pyo
-.scratchpad*.txt
+*.scratchpad*.txt
 .outreach*.txt
 
 /.playwright-mcp
