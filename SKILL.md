@@ -88,6 +88,54 @@ Creates structured plans from requirements with steps, dependencies, and risks. 
 
 **Source**: https://github.com/oimiragieo/agent-studio
 
+### 10. LangGraph (`langgraph`)
+Expert in LangGraph - the production-grade framework for building stateful, multi-actor AI applications. Use when:
+- Building agents with LangGraph or LangChain
+- Creating stateful agent graphs with ReAct patterns
+- Implementing graph construction, state management, cycles and branches
+- Working with persistence using checkpointers
+- Implementing human-in-the-loop patterns
+
+**Source**: https://github.com/sickn33/antigravity-awesome-skills
+
+### 11. React Flow Fundamentals (`reactflow-fundamentals`)
+Build customizable node-based editors and interactive diagrams with React Flow. Use when:
+- Building node-based UIs, flow diagrams, or workflow editors
+- Creating interactive graphs with React Flow
+- Working with nodes, edges, controls, and interactivity
+- Building data pipeline visualizations or state machine diagrams
+
+**Source**: https://github.com/thebushidocollective/han
+
+### 12. React Flow Custom Nodes (`reactflow-custom-nodes`)
+Create fully customized nodes and edges with React Flow. Use when:
+- Creating custom React Flow nodes, edges, and handles
+- Building resizable nodes or node toolbars
+- Implementing advanced node customization
+- Working with custom node components and behaviors
+
+**Source**: https://github.com/thebushidocollective/han
+
+### 13. shadcn/ui Components (`shadcn-ui`)
+Complete shadcn/ui component library patterns with accessible React components. Use when:
+- Setting up shadcn/ui or installing components
+- Building forms with React Hook Form and Zod validation
+- Customizing themes with Tailwind CSS
+- Implementing UI patterns like buttons, dialogs, dropdowns, tables
+- Creating accessible UI components with Radix UI
+
+**Source**: https://github.com/giuseppe-trisciuoglio/developer-kit
+
+### 14. Drag-and-Drop Interfaces (`implementing-drag-drop`)
+Implements drag-and-drop and sortable interfaces with React/TypeScript. Use when:
+- Building Trello-style kanban boards with draggable cards
+- Creating sortable lists with drag handles
+- Implementing file upload zones with drag-and-drop
+- Building reorderable grids or dashboard widgets
+- Creating interactive UIs requiring direct manipulation
+
+**Source**: https://github.com/ancoleman/ai-design-components
+
 ## When to use this skill
 
 Use this skill when working on the Knowsee project, which involves:
