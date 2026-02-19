@@ -6,24 +6,19 @@ import {
 import { HttpAgent } from "@ag-ui/client";
 import { NextRequest } from "next/server";
 
-// Use empty adapter since we're routing to a single ADK agent
+// Use empty adapter since we're routing to a single agent
 const serviceAdapter = new ExperimentalEmptyAdapter();
 
-// Backend agent URL - must be configured via AGENT_URL environment variable
-const agentUrl = process.env.AGENT_URL;
+// Backend agent URLs - support both ADK and LangGraph
+const adkUrl = process.env.AGENT_URL || "http://localhost:8000";
+const langgraphUrl =
+  process.env.LANGGRAPH_AGENT_URL || process.env.AGENT_URL_LANGGRAPH || "http://localhost:8001";
 
-if (!agentUrl) {
+if (!adkUrl) {
   throw new Error(
     "AGENT_URL environment variable is required. Set it in web/.env.development or your deployment environment.",
   );
 }
-
-// Create the CopilotRuntime with AG-UI client connection to the ADK agent
-const runtime = new CopilotRuntime({
-  agents: {
-    knowsee_agent: new HttpAgent({ url: agentUrl }),
-  },
-});
 
 // Track request count for correlation
 let requestCount = 0;
@@ -33,19 +28,34 @@ export const POST = async (req: NextRequest) => {
   const requestId = ++requestCount;
   const userId = req.headers.get("x-user-id");
 
+  // Get backend preference from request header (set by client)
+  const preferredBackend = req.headers.get("x-agent-backend") || "adk";
+
   // Log incoming request with auth context
-  // Note: threadId is managed by CopilotKit in request body, not as a header
   console.log(`[CopilotKit:route] request #${requestId}:`, {
     auth: userId ? "authenticated" : "anonymous",
     userId: userId ?? "(none)",
+    backend: preferredBackend,
   });
 
-  // Warn if request is unauthenticated (likely misconfiguration)
+  // Warn if request is unauthenticated
   if (!userId) {
     console.warn(`[CopilotKit:route] request #${requestId}: missing x-user-id header`, {
       hint: "Check CopilotKitProvider auth state - user may not be logged in or session not loaded",
     });
   }
+
+  // Select agent URL based on preference
+  const agentUrl = preferredBackend === "langgraph" ? langgraphUrl : adkUrl;
+
+  console.log(`[CopilotKit:route] routing to ${preferredBackend} backend: ${agentUrl}`);
+
+  // Create runtime with selected backend
+  const runtime = new CopilotRuntime({
+    agents: {
+      knowsee_agent: new HttpAgent({ url: agentUrl }),
+    },
+  });
 
   const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
     runtime,

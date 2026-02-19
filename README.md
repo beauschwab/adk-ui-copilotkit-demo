@@ -38,9 +38,10 @@ Knowsee demonstrates how to build a multi-agent conversational AI using [Google 
 
 ### 🤖 Agentic Architecture
 
-- **Multi-Agent Orchestration** — Hierarchical delegation via `AgentTool` with isolated contexts
+- **Dual Backend Support** — Toggle between Google ADK and LangGraph implementations
+- **Multi-Agent Orchestration** — Hierarchical delegation via `AgentTool` (ADK) or StateGraph (LangGraph)
 - **A2A Composition** — Agent-to-agent patterns without namespace contamination
-- **Extended Thinking** — Gemini 2.5 Pro with dedicated reasoning budget
+- **Extended Thinking** — Gemini 2.5 Pro with dedicated reasoning budget (ADK) or simulated (LangGraph)
 - **AG-UI Protocol** — Bidirectional streaming between frontend and backend
 - **Generative UI** — Tool calls, reasoning, and sources as interactive components
 - **Data Analyst Agent** — Natural language to SQL with BigQuery, query tracking, chart widgets
@@ -173,6 +174,15 @@ Open http://localhost:3000 and sign up. You'll receive an OTP via email (or chec
 
 ## Architecture
 
+Knowsee uses a **multi-agent architecture** with two backend implementations:
+
+1. **Google ADK Backend** (default) — Production-ready with native Gemini integration
+2. **LangGraph Backend** (experimental) — Alternative with explicit graph structure
+
+Both backends provide 100% feature parity and can be switched via Settings → Developer in the web app.
+
+### ADK Backend (Default)
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                              User Browser                                    │
@@ -206,6 +216,35 @@ Open http://localhost:3000 and sign up. You'll receive an OTP via email (or chec
               └──────────┘ └──────────┘ └──────────┘ └──────────┘
 ```
 
+**ADK Implementation** (`sagent/`):
+- AgentTool pattern for clean sub-agent delegation
+- Native Google Search grounding with citations
+- Extended thinking via ThinkingConfig
+- Production-ready with battle-tested reliability
+
+**LangGraph Implementation** (`sagent_langgraph/`):
+- Explicit StateGraph with conditional routing
+- State reducers for fine-grained control
+- PostgreSQL checkpointer for persistence
+- Compatible with LangChain ecosystem
+
+### Backend Switching
+
+Toggle between backends in **Settings → Developer**:
+
+1. Open settings (user menu → Settings)
+2. Go to Developer tab
+3. Select your preferred backend (ADK or LangGraph)
+4. Save changes and refresh the page
+
+Backend preference is stored in localStorage and persists across sessions.
+
+**When to Use Each:**
+- **ADK**: Default choice, most polished for Google/Gemini integration
+- **LangGraph**: When you need explicit graph structure or LangChain ecosystem integration
+
+See [sagent_langgraph/README.md](sagent_langgraph/README.md) for detailed LangGraph documentation.
+
 ### Data Flow
 
 1. **User sends message** → CopilotKit streams to `/api/copilotkit` with `x-user-id` header
@@ -218,7 +257,7 @@ Open http://localhost:3000 and sign up. You'll receive an OTP via email (or chec
 ### Project Structure
 
 ```
-sagent/                          # Backend (ADK + FastAPI)
+sagent/                          # Backend (Google ADK + FastAPI)
 ├── agents/
 │   ├── root.py                 # Main orchestrator
 │   ├── search.py               # Web search sub-agent
@@ -226,17 +265,29 @@ sagent/                          # Backend (ADK + FastAPI)
 │   └── rag/agent.py            # Team knowledge sub-agent
 ├── callbacks/                  # Before/after LLM hooks
 ├── services/rag/               # RAG sync and config
-└── main.py                     # FastAPI server
+└── main.py                     # FastAPI server (port 8000)
+
+sagent_langgraph/               # Alternative Backend (LangGraph + FastAPI)
+├── agents/                     # Agent node implementations
+│   ├── root.py                 # Orchestrator node
+│   ├── search.py               # Search node
+│   ├── rag.py                  # RAG node
+│   └── data_analyst.py         # Analytics node
+├── callbacks/                  # State preprocessing
+├── state.py                    # State definition with reducers
+├── graph.py                    # Graph construction
+└── main.py                     # FastAPI server (port 8001)
 
 web/                             # Frontend (Next.js + CopilotKit)
 ├── src/app/
-│   ├── api/copilotkit/         # AG-UI bridge
+│   ├── api/copilotkit/         # AG-UI bridge with backend routing
 │   ├── api/sessions/           # Session management
 │   └── chat/                   # Chat pages
 └── src/components/
     ├── charts/                 # Recharts visualisations
     ├── chat/tool-call/         # Modular tool renderers
-    └── copilotkit-provider.tsx # Auth header injection
+    ├── settings/               # Settings dialog with backend toggle
+    └── copilotkit-provider.tsx # Auth + backend header injection
 ```
 
 ## Demo

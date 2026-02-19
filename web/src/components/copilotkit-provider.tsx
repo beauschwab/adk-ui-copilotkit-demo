@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CopilotKit } from "@copilotkit/react-core";
 import { useSession } from "@/lib/auth-client";
 
@@ -9,13 +9,13 @@ interface CopilotKitProviderProps {
 }
 
 /**
- * CopilotKit provider that injects the x-user-id header.
+ * CopilotKit provider that injects the x-user-id header and backend preference.
  *
  * Uses client-side useSession() hook to reactively get the user ID,
  * ensuring the header is set correctly after login without requiring
  * a full page reload.
  *
- * This header is forwarded by CopilotKit to the ADK backend,
+ * This header is forwarded by CopilotKit to the backend (ADK or LangGraph),
  * where user_id_extractor reads it to create per-user sessions.
  */
 export function CopilotKitProvider({ children }: CopilotKitProviderProps) {
@@ -23,6 +23,28 @@ export function CopilotKitProvider({ children }: CopilotKitProviderProps) {
   const userId = session?.user?.email;
   const prevUserIdRef = useRef<string | undefined>(undefined);
   const mountTimeRef = useRef<number>(Date.now());
+
+  // Get backend preference from localStorage
+  const [backend, setBackend] = useState<"adk" | "langgraph">("adk");
+
+  useEffect(() => {
+    // Load backend preference
+    const saved = localStorage.getItem("agent-backend");
+    if (saved === "langgraph") {
+      setBackend("langgraph");
+    }
+
+    // Listen for storage changes (when settings are saved)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "agent-backend" && (e.newValue === "adk" || e.newValue === "langgraph")) {
+        setBackend(e.newValue);
+        console.log("[CopilotKit:backend] switched to:", e.newValue);
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   // Log auth state transitions for debugging
   useEffect(() => {
@@ -50,28 +72,37 @@ export function CopilotKitProvider({ children }: CopilotKitProviderProps) {
         prevUserId: prevUserId ?? "(none)",
         elapsed: `${elapsed}ms`,
         headersWillUpdate: !!userId,
+        backend,
       });
     }
 
     prevUserIdRef.current = userId;
-  }, [userId, isPending]);
+  }, [userId, isPending, backend]);
 
   // Warn if headers might not propagate (CopilotKit gotcha)
   useEffect(() => {
     if (userId && prevUserIdRef.current === undefined) {
       console.log("[CopilotKit:auth] headers now configured:", {
         "x-user-id": userId,
+        "x-agent-backend": backend,
         note: "If requests still fail, ensure CopilotKit re-initialises on header changes",
       });
     }
-  }, [userId]);
+  }, [userId, backend]);
 
   return (
     <CopilotKit
       runtimeUrl="/api/copilotkit"
       agent="knowsee_agent"
       publicLicenseKey={process.env.NEXT_PUBLIC_COPILOTKIT_PUBLIC_KEY}
-      headers={userId ? { "x-user-id": userId } : undefined}
+      headers={
+        userId
+          ? {
+              "x-user-id": userId,
+              "x-agent-backend": backend,
+            }
+          : undefined
+      }
     >
       {children}
     </CopilotKit>
